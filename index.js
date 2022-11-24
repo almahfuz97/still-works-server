@@ -17,14 +17,27 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 async function run() {
     try {
         const categoriesCollection = client.db('still-works').collection('categories');
+        const usersCollection = client.db('still-works').collection('users');
 
         //all get api's
         app.get('/categories', async (req, res) => {
             const query = {};
             const catergories = await categoriesCollection.find(query).toArray();
-            console.log(catergories);
             res.send(catergories);
         })
+
+        // post api's
+        app.post('/users', async (req, res) => {
+            const userInfo = req.body;
+            console.log(userInfo);
+            const query = { email: req.body.email }
+            const isFound = await usersCollection.findOne(query);
+            if (isFound) return res.send({ message: 'User Already Exist' });
+
+            const result = await usersCollection.insertOne(userInfo);
+            res.send(result);
+        })
+
     } catch (error) {
         console.log('run function catch error:', error)
     }
