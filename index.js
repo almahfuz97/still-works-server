@@ -33,9 +33,15 @@ async function run() {
             const query = { email: req.body.email }
             const isFound = await usersCollection.findOne(query);
             if (isFound) return res.send({ message: 'User Already Exist' });
-
             const result = await usersCollection.insertOne(userInfo);
             res.send(result);
+        })
+        // dynamic
+        app.get('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            res.send(user);
         })
 
     } catch (error) {
@@ -51,6 +57,5 @@ app.get('/', (req, res) => {
 
 
 app.listen(port, () => {
-
     console.log('listening on', port)
 })
