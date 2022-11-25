@@ -18,6 +18,7 @@ async function run() {
     try {
         const categoriesCollection = client.db('still-works').collection('categories');
         const usersCollection = client.db('still-works').collection('users');
+        const productsCollection = client.db('still-works').collection('products');
 
         //all get api's
         app.get('/categories', async (req, res) => {
@@ -34,6 +35,12 @@ async function run() {
             const isFound = await usersCollection.findOne(query);
             if (isFound) return res.send({ message: 'User Already Exist' });
             const result = await usersCollection.insertOne(userInfo);
+            res.send(result);
+        })
+        // products
+        app.post('/addproduct', async (req, res) => {
+            const product = req.body;
+            const result = await productsCollection.insertOne(product);
             res.send(result);
         })
         // dynamic
