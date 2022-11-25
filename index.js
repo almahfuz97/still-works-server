@@ -86,6 +86,18 @@ async function run() {
             const products = await productsCollection.find(query).toArray();
             res.send(products);
         })
+        // all buyers
+        app.get('/buyers', async (req, res) => {
+            const query = { role: 'Buyer' };
+            const result = await usersCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.get('/sellers', async (req, res) => {
+            const query = { role: 'Seller' };
+            const result = await usersCollection.find(query).toArray();
+            res.send(result);
+        })
         app.put('/products/advertise/:id', async (req, res) => {
             const id = req.params.id;
             const body = req.body;
@@ -107,11 +119,44 @@ async function run() {
 
             return res.send(result);
         })
+        app.put('/users/seller/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const seller = await usersCollection.findOne(filter);
 
+            let isVerify;
+            if (seller?.isVerified) isVerify = false
+            else isVerify = true;
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
+                    isVerified: isVerify
+                }
+            }
+            const result = await usersCollection.updateOne(filter, updatedDoc, options);
+            res.send(result);
+        })
+
+        app.delete('/users/delete/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const result = await usersCollection.deleteOne(query);
+            console.log(result);
+            res.send(result);
+        })
+        // delete a single product
         app.delete('/products/delete/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const result = await productsCollection.deleteOne(query);
+            console.log(result);
+            res.send(result);
+        })
+        // delete all products of a specific user if the use gets deleted
+        app.delete('/user/products/delete/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { sellerEmail: email };
+            const result = await productsCollection.deleteMany(query);
             console.log(result);
             res.send(result);
         })
