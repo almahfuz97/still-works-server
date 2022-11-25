@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 require('dotenv').config();
 const port = process.env.PORT || 5000;
@@ -79,7 +79,42 @@ async function run() {
             res.send({ isFound: false });
 
         })
+        // seller's all products
+        app.get('/products/seller/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { sellerEmail: email };
+            const products = await productsCollection.find(query).toArray();
+            res.send(products);
+        })
+        app.put('/products/advertise/:id', async (req, res) => {
+            const id = req.params.id;
+            const body = req.body;
+            const filter = { _id: ObjectId(id) };
+            console.log(body);
+            const product = await productsCollection.findOne(filter);
+            console.log(product);
+            let isAd;
+            if (product?.isAdvertised) isAd = false
+            else isAd = true;
+            const options = { upsert: true }
+            const updatedDoc = {
+                $set: {
+                    isAdvertised: isAd
+                }
+            }
+            const result = await productsCollection.updateOne(filter, updatedDoc, options);
+            console.log(result)
 
+            return res.send(result);
+        })
+
+        app.delete('/products/delete/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await productsCollection.deleteOne(query);
+            console.log(result);
+            res.send(result);
+        })
     } catch (error) {
         console.log('run function catch error:', error)
     }
