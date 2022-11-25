@@ -19,6 +19,7 @@ async function run() {
         const categoriesCollection = client.db('still-works').collection('categories');
         const usersCollection = client.db('still-works').collection('users');
         const productsCollection = client.db('still-works').collection('products');
+        const bookedProductsCollection = client.db('still-works').collection('bookedProducts');
 
         //all get api's
         app.get('/categories', async (req, res) => {
@@ -26,8 +27,24 @@ async function run() {
             const catergories = await categoriesCollection.find(query).toArray();
             res.send(catergories);
         })
+        // single category products
+        app.get('/category/:id', async (req, res) => {
+            const id = req.params.id;
+            console.log(id)
+            const query = { categoryId: id, availability: 'available' };
+            const products = await productsCollection.find(query).toArray();
+            console.log(products)
+            res.send(products);
+        })
+        // one user get api
+        app.get('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            res.send(user);
+        })
 
-        // post api's
+        // add users post api's
         app.post('/users', async (req, res) => {
             const userInfo = req.body;
             console.log(userInfo);
@@ -37,18 +54,30 @@ async function run() {
             const result = await usersCollection.insertOne(userInfo);
             res.send(result);
         })
-        // products
+        // add products
         app.post('/addproduct', async (req, res) => {
             const product = req.body;
             const result = await productsCollection.insertOne(product);
             res.send(result);
         })
-        // dynamic
-        app.get('/users/:email', async (req, res) => {
-            const email = req.params.email;
-            const query = { email };
-            const user = await usersCollection.findOne(query);
-            res.send(user);
+        // add booked products 
+        app.post('/bookedProducts', async (req, res) => {
+            const bookedProduct = req.body;
+            console.log(bookedProduct);
+            const result = await bookedProductsCollection.insertOne(bookedProduct);
+            res.send(result);
+        })
+        // find a booking for a particular user
+        app.get('/bookedProducts/:id', async (req, res) => {
+            const id = req.params.id;
+            const email = req.headers.email;
+            console.log(email, id);
+            const query = { customerEmail: email, productId: id };
+            const result = await bookedProductsCollection.findOne(query);
+            console.log(result);
+            if (result) return res.send({ isFound: true })
+            res.send({ isFound: false });
+
         })
 
     } catch (error) {
