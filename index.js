@@ -98,6 +98,11 @@ async function run() {
             const result = await usersCollection.find(query).toArray();
             res.send(result);
         })
+        app.get('/advertisedProducts', async (req, res) => {
+            const query = { isAdvertised: true, availability: 'available' };
+            const result = await productsCollection.find(query).toArray();
+            res.send(result);
+        })
         app.put('/products/advertise/:id', async (req, res) => {
             const id = req.params.id;
             const body = req.body;
