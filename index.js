@@ -1,11 +1,14 @@
 const express = require('express');
-const cors = require('cors');
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const cors = require('cors');
+const { query } = require('express');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const stripe = require('stripe')(`${process.env.STRIPE_SECRET}`)
+
 const port = process.env.PORT || 5000;
-
-
+// middle ware
 app.use(cors());
 app.use(express.json());
 
@@ -36,7 +39,7 @@ async function run() {
             console.log(products)
             res.send(products);
         })
-        // one user get api
+        // // one user get api
         app.get('/users/:email', async (req, res) => {
             const email = req.params.email;
             const query = { email };
@@ -44,7 +47,7 @@ async function run() {
             res.send(user);
         })
 
-        // add users post api's
+        // // add users post api's
         app.post('/users', async (req, res) => {
             const userInfo = req.body;
             console.log(userInfo);
@@ -54,20 +57,41 @@ async function run() {
             const result = await usersCollection.insertOne(userInfo);
             res.send(result);
         })
-        // add products
+        // // add products
         app.post('/addproduct', async (req, res) => {
             const product = req.body;
             const result = await productsCollection.insertOne(product);
             res.send(result);
         })
-        // add booked products 
+        // // add booked products 
         app.post('/bookedProducts', async (req, res) => {
             const bookedProduct = req.body;
             console.log(bookedProduct);
             const result = await bookedProductsCollection.insertOne(bookedProduct);
             res.send(result);
         })
-        // find a booking for a particular user
+        app.post("/create-payment-intent", async (req, res) => {
+            const bookingOrder = req.body;
+            const price = bookingOrder.resalePrice;
+            const amount = price * 100;
+
+
+            // Create a PaymentIntent with the order amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: price * 100,
+                currency: "usd",
+                "payment_method_types": [
+                    "card"
+                ]
+
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+
+        // // find a booking for a particular user
         app.get('/bookedProducts/:id', async (req, res) => {
             const id = req.params.id;
             const email = req.headers.email;
@@ -103,16 +127,34 @@ async function run() {
             const result = await productsCollection.find(query).toArray();
             res.send(result);
         })
+        // 
+        app.get('/myOrders', async (req, res) => {
+            const email = req.query.email;
+            const query = { customerEmail: email, availability: 'available' };
+            const result = await bookedProductsCollection.find(query).toArray();
+            console.log(result)
+            res.send(result);
+        })
+        // payment
+        app.get('/dashboard/payment/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const bookedProduct = await bookedProductsCollection.findOne(query)
+            res.send(bookedProduct);
+        })
         app.put('/products/advertise/:id', async (req, res) => {
             const id = req.params.id;
             const body = req.body;
             const filter = { _id: ObjectId(id) };
             console.log(body);
+
             const product = await productsCollection.findOne(filter);
             console.log(product);
+            // res.send({ message: 'okai toki' })
+
             let isAd;
-            if (product?.isAdvertised) isAd = false
-            else isAd = true;
+            if (product.isAdvertised) isAd = false
+            else isAd = true
             const options = { upsert: true }
             const updatedDoc = {
                 $set: {
@@ -122,15 +164,16 @@ async function run() {
             const result = await productsCollection.updateOne(filter, updatedDoc, options);
             console.log(result)
 
-            return res.send(result);
+            res.send(result);
         })
+
         app.put('/users/seller/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: ObjectId(id) };
             const seller = await usersCollection.findOne(filter);
 
             let isVerify;
-            if (seller?.isVerified) isVerify = false
+            if (seller.isVerified) isVerify = false
             else isVerify = true;
             const options = { upsert: true };
             const updatedDoc = {
@@ -165,11 +208,12 @@ async function run() {
             console.log(result);
             res.send(result);
         })
+
     } catch (error) {
         console.log('run function catch error:', error)
     }
 }
-run().catch(console.dir)
+run().catch(err => console.log('run or catch error:', err))
 
 
 app.get('/', (req, res) => {
