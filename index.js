@@ -77,6 +77,7 @@ async function run() {
         app.get('/bookedProducts/:id', async (req, res) => {
             const id = req.params.id;
             const email = req.headers.email;
+            console.log(id, email)
             const query = { customerEmail: email, productId: id };
             const result = await bookedProductsCollection.findOne(query);
 
@@ -146,10 +147,11 @@ async function run() {
         app.get('/wishlist/:email', async (req, res) => {
             const email = req.params.email;
             const productId = req.headers.productid;
-            const query = { customerEmail: email, productId }
+            console.log(productId)
+            const query = { customerEmail: email, productId: productId }
             const result = await wishlistCollection.findOne(query)
 
-            if (result) return res.send({ isFound: true });
+            if (result) return res.send({ isFound: true, result });
             res.send({ isFound: false });
         })
         // get all wishlist
@@ -163,18 +165,6 @@ async function run() {
             const query = { customerEmail: email };
             const wishlistedItems = await wishlistCollection.find(query).toArray();
             res.send(wishlistedItems)
-            // console.log(wishlistedItems.length)
-            // let products = [];
-            // wishlistedItems.map(async (item, i) => {
-            //     const query = { _id: ObjectId(item.productId) }
-            //     const result = await productsCollection.findOne(query);
-            //     products.push(result)
-            //     if (i === wishlistedItems.length) {
-
-            //         return res.send(products)
-            //     }
-
-            // })
 
         })
         app.get('/products/:id', async (req, res) => {
