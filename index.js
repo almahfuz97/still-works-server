@@ -23,6 +23,7 @@ async function run() {
         const usersCollection = client.db('still-works').collection('users');
         const productsCollection = client.db('still-works').collection('products');
         const bookedProductsCollection = client.db('still-works').collection('bookedProducts');
+        const paymentsCollection = client.db('still-works').collection('payments');
 
         //all get api's
         app.get('/categories', async (req, res) => {
@@ -45,6 +46,71 @@ async function run() {
             const query = { email };
             const user = await usersCollection.findOne(query);
             res.send(user);
+        })
+        // // find a booking for a particular user
+        app.get('/bookedProducts/:id', async (req, res) => {
+            const id = req.params.id;
+            const email = req.headers.email;
+            console.log(email, id);
+            const query = { customerEmail: email, productId: id };
+            const result = await bookedProductsCollection.findOne(query);
+            console.log(result);
+            if (result) return res.send({ isFound: true })
+            res.send({ isFound: false });
+
+        })
+        // seller's all products
+        app.get('/products/seller/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { sellerEmail: email };
+            const products = await productsCollection.find(query).toArray();
+            res.send(products);
+        })
+        // all buyers
+        app.get('/buyers', async (req, res) => {
+            const query = { role: 'Buyer' };
+            const result = await usersCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.get('/sellers', async (req, res) => {
+            const query = { role: 'Seller' };
+            const result = await usersCollection.find(query).toArray();
+            res.send(result);
+        })
+        app.get('/sellers/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { role: 'Seller', email: email };
+            const result = await usersCollection.find(query).toArray();
+            console.log(result);
+            res.send(result);
+        })
+        app.get('/admin', async (req, res) => {
+            const email = req.headers.email;
+            const query = { role: 'admin', email: email };
+            const result = await usersCollection.find(query).toArray();
+            console.log(result);
+            res.send(result);
+        })
+        app.get('/advertisedProducts', async (req, res) => {
+            const query = { isAdvertised: true, availability: 'available' };
+            const result = await productsCollection.find(query).toArray();
+            res.send(result);
+        })
+        // 
+        app.get('/myOrders', async (req, res) => {
+            const email = req.query.email;
+            const query = { customerEmail: email, $or: [{ availability: 'available' }, { isPaid: true }] };
+            const result = await bookedProductsCollection.find(query).toArray();
+            console.log(result)
+            res.send(result);
+        })
+        // payment
+        app.get('/dashboard/payment/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const bookedProduct = await bookedProductsCollection.findOne(query)
+            res.send(bookedProduct);
         })
 
         // // add users post api's
@@ -83,65 +149,31 @@ async function run() {
                 "payment_method_types": [
                     "card"
                 ]
-
             });
 
             res.send({
                 clientSecret: paymentIntent.client_secret
             })
         })
-
-        // // find a booking for a particular user
-        app.get('/bookedProducts/:id', async (req, res) => {
-            const id = req.params.id;
-            const email = req.headers.email;
-            console.log(email, id);
-            const query = { customerEmail: email, productId: id };
-            const result = await bookedProductsCollection.findOne(query);
-            console.log(result);
-            if (result) return res.send({ isFound: true })
-            res.send({ isFound: false });
-
-        })
-        // seller's all products
-        app.get('/products/seller/:email', async (req, res) => {
-            const email = req.params.email;
-            const query = { sellerEmail: email };
-            const products = await productsCollection.find(query).toArray();
-            res.send(products);
-        })
-        // all buyers
-        app.get('/buyers', async (req, res) => {
-            const query = { role: 'Buyer' };
-            const result = await usersCollection.find(query).toArray();
+        // paymentss
+        app.post('/payments', async (req, res) => {
+            const payment = req.body;
+            const result = await paymentsCollection.insertOne(payment);
+            const bookingId = payment.bookingId;
+            const filter = { _id: ObjectId(bookingId) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
+                    isPaid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+            const updatedResult = await bookedProductsCollection.updateOne(filter, updatedDoc, options);
             res.send(result);
+
         })
 
-        app.get('/sellers', async (req, res) => {
-            const query = { role: 'Seller' };
-            const result = await usersCollection.find(query).toArray();
-            res.send(result);
-        })
-        app.get('/advertisedProducts', async (req, res) => {
-            const query = { isAdvertised: true, availability: 'available' };
-            const result = await productsCollection.find(query).toArray();
-            res.send(result);
-        })
-        // 
-        app.get('/myOrders', async (req, res) => {
-            const email = req.query.email;
-            const query = { customerEmail: email, availability: 'available' };
-            const result = await bookedProductsCollection.find(query).toArray();
-            console.log(result)
-            res.send(result);
-        })
-        // payment
-        app.get('/dashboard/payment/:id', async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: ObjectId(id) };
-            const bookedProduct = await bookedProductsCollection.findOne(query)
-            res.send(bookedProduct);
-        })
+        // put
         app.put('/products/advertise/:id', async (req, res) => {
             const id = req.params.id;
             const body = req.body;
