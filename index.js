@@ -142,6 +142,7 @@ async function run() {
             res.send(bookedProduct);
         })
 
+        // single wishlist check
         app.get('/wishlist/:email', async (req, res) => {
             const email = req.params.email;
             const productId = req.headers.productid;
@@ -151,7 +152,37 @@ async function run() {
             if (result) return res.send({ isFound: true });
             res.send({ isFound: false });
         })
+        // get all wishlist
+        app.get('/mywishlist/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const decodedEmail = req.decoded;
 
+            if (decodedEmail !== email) return res.status(403).send({ message: 'forbidden access' })
+
+            console.log(email)
+            const query = { customerEmail: email };
+            const wishlistedItems = await wishlistCollection.find(query).toArray();
+            res.send(wishlistedItems)
+            // console.log(wishlistedItems.length)
+            // let products = [];
+            // wishlistedItems.map(async (item, i) => {
+            //     const query = { _id: ObjectId(item.productId) }
+            //     const result = await productsCollection.findOne(query);
+            //     products.push(result)
+            //     if (i === wishlistedItems.length) {
+
+            //         return res.send(products)
+            //     }
+
+            // })
+
+        })
+        app.get('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const product = await productsCollection.findOne(query);
+            res.send(product);
+        })
         // // add users post api's
         app.post('/users', async (req, res) => {
             const userInfo = req.body;
