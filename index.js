@@ -37,6 +37,7 @@ async function run() {
         const bookedProductsCollection = client.db('still-works').collection('bookedProducts');
         const paymentsCollection = client.db('still-works').collection('payments');
         const wishlistCollection = client.db('still-works').collection('wishlist');
+        const blogCollection = client.db('still-works').collection('blog');
 
         // jwt token
         app.get('/jwt', async (req, res) => {
@@ -80,10 +81,8 @@ async function run() {
             console.log(id, email)
             const query = { customerEmail: email, productId: id };
             const result = await bookedProductsCollection.findOne(query);
-
             if (result) return res.send({ isFound: true })
             res.send({ isFound: false });
-
         })
         // seller's all products
         app.get('/products/seller/:email', verifyJWT, async (req, res) => {
@@ -128,11 +127,19 @@ async function run() {
             res.send(result);
         })
         // 
-        app.get('/myOrders', async (req, res) => {
+        app.get('/myOrders', verifyJWT, async (req, res) => {
             const email = req.query.email;
             const query = { customerEmail: email, $or: [{ availability: 'available' }, { isPaid: true }] };
             const result = await bookedProductsCollection.find(query).toArray();
 
+            res.send(result);
+        })
+        app.get('/myOrders/:id', async (req, res) => {
+            const email = req.query.email;
+            const id = req.params.id;
+            const query = { customerEmail: email, _id: ObjectId(id) };
+            const result = await bookedProductsCollection.findOne(query);
+            console.log(result)
             res.send(result);
         })
         // payment
@@ -173,10 +180,17 @@ async function run() {
             const product = await productsCollection.findOne(query);
             res.send(product);
         })
+        // 
+        app.get('/blog', async (req, res) => {
+            const result = await blogCollection.find({}).toArray();
+            res.send(result);
+        })
         // // add users post api's
         app.post('/users', async (req, res) => {
-            const userInfo = req.body;
-
+            const userInfo = {
+                ...req.body,
+                displayName: req.body.name
+            }
             const query = { email: req.body.email }
             const isFound = await usersCollection.findOne(query);
             if (isFound) return res.send({ message: 'User Already Exist' });
@@ -200,7 +214,6 @@ async function run() {
             const bookingOrder = req.body;
             const price = bookingOrder.resalePrice;
             const amount = price * 100;
-
 
             // Create a PaymentIntent with the order amount and currency
             const paymentIntent = await stripe.paymentIntents.create({
@@ -307,9 +320,14 @@ async function run() {
 
         app.delete('/users/delete/:email', async (req, res) => {
             const email = req.params.email;
-            const query = { email };
+            let query;
+            if (email.indexOf('@') === -1) {
+                query = { _id: ObjectId(email) }
+            }
+            else {
+                query = { email };
+            }
             const result = await usersCollection.deleteOne(query);
-
             res.send(result);
         })
         // delete a single product
